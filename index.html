@@ -3,238 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agend-AI | Cloud Sync</title>
+    <title>Agend-AI | Private Cloud</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .hidden-ui { display: none !important; }
+    </style>
 </head>
 <body class="bg-slate-100 font-sans text-slate-900">
 
-    <div class="min-h-screen flex flex-col md:flex-row max-w-6xl mx-auto shadow-2xl overflow-hidden">
-        
+    <div id="auth-overlay" class="fixed inset-0 bg-slate-900/90 z-50 flex items-center justify-center p-4 hidden-ui">
+        <div class="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl">
+            <h2 class="text-2xl font-black text-indigo-600 mb-2">Welcome to Agend-AI</h2>
+            <p class="text-slate-500 mb-6 text-sm">Please login or sign up to see your private agenda.</p>
+            <input type="email" id="auth-email" placeholder="Email" class="w-full p-3 border rounded-xl mb-3 outline-none focus:ring-2 focus:ring-indigo-400">
+            <input type="password" id="auth-password" placeholder="Password" class="w-full p-3 border rounded-xl mb-6 outline-none focus:ring-2 focus:ring-indigo-400">
+            <div class="flex gap-2">
+                <button onclick="handleAuth('login')" class="flex-1 bg-indigo-600 text-white p-3 rounded-xl font-bold hover:bg-indigo-700">Login</button>
+                <button onclick="handleAuth('signup')" class="flex-1 border border-slate-200 p-3 rounded-xl font-bold hover:bg-slate-50">Sign Up</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-ui" class="min-h-screen flex flex-col md:flex-row max-w-6xl mx-auto shadow-2xl overflow-hidden">
         <main class="flex-1 p-6 md:p-12 bg-white overflow-y-auto">
             <div class="flex justify-between items-center mb-10">
                 <div>
                     <h1 class="text-4xl font-black text-indigo-600 tracking-tight">Agend-AI</h1>
-                    <p id="date-display" class="text-slate-400 font-medium italic">Syncing to Cloud...</p>
+                    <button onclick="handleLogout()" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-red-500">Logout</button>
                 </div>
-                <button onclick="clearAll()" class="text-xs font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition">
-                    <i class="fa-solid fa-cloud-slash mr-1"></i> Clear Cloud
-                </button>
+                <div id="progress-text" class="text-3xl font-black text-slate-200">0%</div>
             </div>
 
-            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-8 space-y-3 shadow-sm">
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-8 space-y-3">
                 <div class="flex flex-wrap gap-2">
-                    <input type="text" id="task-input" placeholder="What's the goal?" 
-                        class="flex-1 p-3 bg-white border border-slate-200 rounded-xl outline-none font-medium focus:ring-2 focus:ring-indigo-400">
-                    
+                    <input type="text" id="task-input" placeholder="What's next?" class="flex-1 p-3 bg-white border border-slate-200 rounded-xl outline-none font-medium">
                     <select id="category-select" class="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold">
                         <option value="Personal">🏠 Personal</option>
                         <option value="Work">💼 Work</option>
                         <option value="Urgent">🔥 Urgent</option>
                     </select>
-
-                    <button id="add-btn" onclick="addTask()" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg">
-                        Add Task
-                    </button>
+                    <button onclick="addTask()" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg">Add</button>
                 </div>
-                <input type="text" id="task-notes" placeholder="Add a note (optional)..." 
-                    class="w-full p-2 bg-transparent text-sm text-slate-500 border-b border-slate-200 outline-none">
             </div>
 
-            <div id="task-list" class="space-y-3">
-                <div class="text-center py-10 text-slate-300 italic font-medium">Loading your agenda...</div>
-            </div>
+            <div id="task-list" class="space-y-3"></div>
         </main>
-
-        <aside class="w-full md:w-80 bg-slate-900 text-white p-8 flex flex-col">
-            <div class="mb-10 text-center bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-inner">
-                <h3 class="text-[10px] uppercase tracking-[0.2em] text-indigo-400 font-black mb-2">Focus Timer</h3>
-                <div id="timer-display" class="text-5xl font-mono font-black mb-4">25:00</div>
-                <div class="flex justify-center gap-2">
-                    <button id="timer-btn" onclick="toggleTimer()" class="bg-indigo-600 px-4 py-2 rounded-full text-xs font-bold hover:bg-indigo-500 transition">Start</button>
-                    <button onclick="resetTimer()" class="bg-slate-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-slate-600 transition">Reset</button>
-                </div>
-            </div>
-
-            <div class="mb-8 text-center bg-indigo-900/30 p-4 rounded-2xl border border-indigo-500/20">
-                <div id="progress-text" class="text-3xl font-black text-white">0%</div>
-                <div class="text-[10px] uppercase tracking-widest text-indigo-300 mt-1 font-bold">Cloud Sync Active</div>
-            </div>
+        
+        <aside class="w-full md:w-80 bg-slate-900 text-white p-8">
+            <div id="timer-display" class="text-5xl font-mono font-black mb-4 text-center">25:00</div>
+            <button id="timer-btn" onclick="toggleTimer()" class="w-full bg-indigo-600 py-3 rounded-xl font-bold">Start Focus</button>
         </aside>
     </div>
 
     <script>
-        // --- 1. SUPABASE CONNECTION ---
-        // IMPORTANT: Replace these with your real Project settings from Supabase Dashboard > Settings > API
-        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co'; 
-        const SUPABASE_KEY = 'YOUR_ANON_PUBLIC_KEY'; 
-
+        // REPLACE WITH YOUR ACTUAL KEYS
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_KEY = 'YOUR_SUPABASE_KEY';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let tasks = [];
-        const colors = { 
-            'Personal': 'bg-blue-100 text-blue-700 border-blue-200', 
-            'Work': 'bg-purple-100 text-purple-700 border-purple-200', 
-            'Urgent': 'bg-red-100 text-red-700 border-red-200' 
-        };
 
-        // --- 2. CLOUD DATABASE FUNCTIONS ---
-        
-        // Load data from Supabase
-        async function fetchTasks() {
-            const { data, error } = await _supabase
-                .from('tasks')
-                .select('*')
-                .order('created_at', { ascending: false });
+        // --- AUTH LOGIC ---
+        async function handleAuth(type) {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const { error } = (type === 'login') 
+                ? await _supabase.auth.signInWithPassword({ email, password })
+                : await _supabase.auth.signUp({ email, password });
 
-            if (error) {
-                console.error('Fetch error:', error.message);
-                document.getElementById('task-list').innerHTML = `<div class="text-red-400 text-center">Error: ${error.message}</div>`;
-            } else {
-                tasks = data;
-                render();
-            }
+            if (error) alert(error.message);
+            else checkUser();
         }
 
-        // Add new data to Supabase
-        async function addTask() {
-            const text = document.getElementById('task-input').value.trim();
-            const note = document.getElementById('task-notes').value.trim();
-            const category = document.getElementById('category-select').value;
-            
-            if (!text) return;
+        async function handleLogout() {
+            await _supabase.auth.signOut();
+            checkUser();
+        }
 
-            const { error } = await _supabase
-                .from('tasks')
-                .insert([{ text, note, category, is_completed: false }]);
-
-            if (!error) {
-                document.getElementById('task-input').value = "";
-                document.getElementById('task-notes').value = "";
+        async function checkUser() {
+            const { data: { user } } = await _supabase.auth.getUser();
+            if (user) {
+                document.getElementById('auth-overlay').classList.add('hidden-ui');
                 fetchTasks();
             } else {
-                alert("Error adding task: " + error.message);
+                document.getElementById('auth-overlay').classList.remove('hidden-ui');
             }
         }
 
-        // Update task status
+        // --- TASK LOGIC ---
+        async function fetchTasks() {
+            const { data, error } = await _supabase.from('tasks').select('*').order('created_at', { ascending: false });
+            if (!error) { tasks = data; render(); }
+        }
+
+        async function addTask() {
+            const text = document.getElementById('task-input').value;
+            const category = document.getElementById('category-select').value;
+            if(!text) return;
+            const { error } = await _supabase.from('tasks').insert([{ text, category }]);
+            if(!error) { document.getElementById('task-input').value = ""; fetchTasks(); }
+        }
+
         async function toggleTask(id, currentStatus) {
-            const { error } = await _supabase
-                .from('tasks')
-                .update({ is_completed: !currentStatus })
-                .eq('id', id);
-
-            if (!error) fetchTasks();
+            await _supabase.from('tasks').update({ is_completed: !currentStatus }).eq('id', id);
+            fetchTasks();
         }
 
-        // Delete task
-        async function deleteTask(id) {
-            const { error } = await _supabase
-                .from('tasks')
-                .delete()
-                .eq('id', id);
-
-            if (!error) fetchTasks();
-        }
-
-        // Clear everything
-        async function clearAll() {
-            if(confirm("Are you sure you want to delete ALL tasks from the cloud?")) {
-                const { error } = await _supabase.from('tasks').delete().neq('id', 0);
-                if (!error) fetchTasks();
-            }
-        }
-
-        // --- 3. UI RENDERING ---
         function render() {
             const list = document.getElementById('task-list');
             list.innerHTML = "";
-            let doneCount = 0;
-
-            if (tasks.length === 0) {
-                list.innerHTML = `<div class="text-center py-10 text-slate-300">No tasks yet. Add one above!</div>`;
-            }
-
+            let done = 0;
             tasks.forEach(t => {
-                if (t.is_completed) doneCount++;
+                if(t.is_completed) done++;
                 const item = document.createElement('div');
-                item.className = `flex items-start p-4 rounded-2xl border transition-all ${t.is_completed ? 'opacity-40 bg-slate-50 border-slate-200' : 'bg-white shadow-sm hover:shadow-md border-slate-100'}`;
-                
+                item.className = `flex items-center p-4 rounded-2xl border bg-white ${t.is_completed ? 'opacity-40' : 'shadow-sm'}`;
                 item.innerHTML = `
-                    <input type="checkbox" ${t.is_completed ? 'checked' : ''} 
-                        onclick="toggleTask(${t.id}, ${t.is_completed})" 
-                        class="mt-1 w-5 h-5 accent-indigo-600 cursor-pointer">
-                    <div class="ml-4 flex-1">
-                        <p class="font-bold leading-tight ${t.is_completed ? 'line-through text-slate-400' : 'text-slate-700'}">${t.text}</p>
-                        ${t.note ? `<p class="text-xs text-slate-400 mt-1 italic">${t.note}</p>` : ''}
-                        <div class="mt-2">
-                            <span class="text-[9px] uppercase font-black px-2 py-0.5 rounded-md ${colors[t.category]} border">${t.category}</span>
-                        </div>
-                    </div>
-                    <button onclick="deleteTask(${t.id})" class="text-slate-300 hover:text-red-500 transition ml-2">
-                        <i class="fa-solid fa-circle-xmark text-lg"></i>
-                    </button>
+                    <input type="checkbox" ${t.is_completed ? 'checked' : ''} onclick="toggleTask(${t.id}, ${t.is_completed})" class="w-5 h-5 accent-indigo-600">
+                    <p class="ml-4 flex-1 font-bold ${t.is_completed ? 'line-through' : ''}">${t.text}</p>
+                    <span class="text-[10px] font-black uppercase px-2 py-1 bg-slate-100 rounded-md">${t.category}</span>
                 `;
                 list.appendChild(item);
             });
-
-            const percent = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
-            document.getElementById('progress-text').innerText = `${percent}%`;
+            document.getElementById('progress-text').innerText = `${tasks.length ? Math.round((done/tasks.length)*100) : 0}%`;
         }
 
-        // --- 4. FOCUS TIMER LOGIC ---
+        // Timer Logic (Simplified for brevity)
         let timeLeft = 25 * 60;
-        let timerInterval = null;
-
-        function updateTimerDisplay() {
-            const mins = Math.floor(timeLeft / 60);
-            const secs = timeLeft % 60;
-            document.getElementById('timer-display').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-        }
-
+        let timerInterval;
         function toggleTimer() {
-            const btn = document.getElementById('timer-btn');
-            if (timerInterval) {
-                clearInterval(timerInterval);
-                timerInterval = null;
-                btn.innerText = "Start";
-            } else {
-                timerInterval = setInterval(() => {
-                    timeLeft--;
-                    updateTimerDisplay();
-                    if (timeLeft <= 0) {
-                        clearInterval(timerInterval);
-                        timerInterval = null;
-                        alert("Session complete! Time for a break.");
-                        resetTimer();
-                    }
-                }, 1000);
-                btn.innerText = "Pause";
-            }
+            if(timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+            else { timerInterval = setInterval(() => { timeLeft--; 
+                const m = Math.floor(timeLeft/60); const s = timeLeft%60;
+                document.getElementById('timer-display').innerText = `${m}:${s<10?'0':''}${s}`;
+            }, 1000); }
         }
 
-        function resetTimer() {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            timeLeft = 25 * 60;
-            updateTimerDisplay();
-            document.getElementById('timer-btn').innerText = "Start";
-        }
-
-        // --- 5. INITIALIZE ---
-        // Set Today's Date
-        document.getElementById('date-display').innerText = new Date().toLocaleDateString('en-US', { 
-            weekday: 'long', month: 'long', day: 'numeric' 
-        });
-
-        // Listen for Enter key
-        document.getElementById('task-input').addEventListener("keypress", (e) => {
-            if (e.key === "Enter") addTask();
-        });
-
-        // Initial fetch from cloud
-        fetchTasks();
+        checkUser();
     </script>
 </body>
 </html>
